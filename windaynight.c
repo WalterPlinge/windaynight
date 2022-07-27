@@ -1,4 +1,4 @@
-// cl daynight.c /link kernel32.lib advapi32.lib
+// cl windaynight.c /link kernel32.lib advapi32.lib
 
 /*
 New-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name SystemUsesLightTheme -Value 0 -Type Dword -Force
