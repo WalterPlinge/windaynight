@@ -1,105 +1,90 @@
-// cl windaynight.c /link kernel32.lib advapi32.lib
+// cl.exe windaynight.c /nologo /W3 /WX /O1 /GS- /link /fixed /incremental:no /opt:icf /opt:ref /subsystem:console kernel32.lib advapi32.lib shell32.lib
 
-/*
-New-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name SystemUsesLightTheme -Value 0 -Type Dword -Force
-New-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value 0 -Type Dword -Force
-*/
+// Thanks to @mmozeiko for the gist on how to minimise linking to the CRT:
+// - https://gist.github.com/mmozeiko/81e9c0253cc724638947a53b826888e9
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <shellapi.h>
+#include <strsafe.h>
 
-#include <stdio.h>
-
-#define STRING_EQUAL(A, B) (strcmp(A, B) == 0)
-
-#define HELP "daynight.exe\n\tToggles Windows theme between dark and light\n\tYou may also specify '-dark' or '-light'\n"
+#define HELP L"WinDayNight\n\tToggles Windows theme between dark and light\n\tYou may also specify '-dark' or '-light'\n"
 
 #define KEY     HKEY_CURRENT_USER
-#define SUB_KEY "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-#define SYS_VAL "SystemUsesLightTheme"
-#define APP_VAL "AppsUseLightTheme"
+#define SUB_KEY L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+#define SYS_VAL L"SystemUsesLightTheme"
+#define APP_VAL L"AppsUseLightTheme"
+
+#define THEME_DARK  0
+#define THEME_LIGHT 1
+
+#define STRING_EQUAL(A, B) (lstrcmpiW(A, B) == 0)
+
+void print(LPWSTR string) {
+	size_t length = 0;
+	StringCchLengthW(string, STRSAFE_MAX_CCH, &length);
+	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), string, (DWORD)length, NULL, NULL);
+}
 
 void print_error(LSTATUS status) {
-	DWORD_PTR buffer = {0};
-	DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM;
-	FormatMessage(
-		flags,           // [in]           DWORD   dwFlags,
-		NULL,            // [in, optional] LPCVOID lpSource,
-		status,          // [in]           DWORD   dwMessageId,
-		0,               // [in]           DWORD   dwLanguageId,
-		(LPTSTR)&buffer, // [out]          LPWSTR  lpBuffer,
-		0,               // [in]           DWORD   nSize,
-		NULL             // [in, optional] va_list *Arguments
-	);
-	printf("Error message: %s\n", (TCHAR *)buffer);
+	DWORD flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER;
+	LPWSTR buffer = {0};
+	DWORD wchar_count = FormatMessageW(flags, NULL, status, 0, (LPWSTR)&buffer, 0, NULL);
+	print(buffer);
+	print(L"\n");
 	LocalFree(&buffer);
 }
 
-int main(int argc, char** argv) {
-	DWORD new_theme = 0;
+int mainCRTStartup() {
+	LPWSTR cmdline = GetCommandLineW();
+
+	int argc = 0;
+	LPWSTR *argv = CommandLineToArgvW(cmdline, &argc);
+
+	DWORD new_theme = THEME_DARK;
 
 	if (argc < 1 || argc > 2) {
-		printf(HELP);
+		print(HELP);
 		return 1;
 	} else if (argc == 2) {
-		if (STRING_EQUAL(argv[1], "-dark")) {
-			new_theme = 0;
+		if (STRING_EQUAL(argv[1], L"-dark")) {
+			new_theme = THEME_DARK;
 		} else
-		if (STRING_EQUAL(argv[1], "-light")) {
-			new_theme = 1;
+		if (STRING_EQUAL(argv[1], L"-light")) {
+			new_theme = THEME_LIGHT;
 		} else {
-			printf(HELP);
+			print(HELP);
 			return 0;
 		}
 	} else {
-		DWORD type, data, size = sizeof(DWORD);
-		LSTATUS status = RegGetValue(
-			KEY,           // [in]                HKEY    hkey,
-			TEXT(SUB_KEY), // [in, optional]      LPCSTR  lpSubKey,
-			TEXT(SYS_VAL), // [in, optional]      LPCSTR  lpValue,
-			RRF_RT_DWORD,  // [in, optional]      DWORD   dwFlags,
-			&type,         // [out, optional]     LPDWORD pdwType,
-			&data,         // [out, optional]     PVOID   pvData,
-			&size          // [in, out, optional] LPDWORD pcbData
-		);
+		DWORD data, size = sizeof(DWORD);
+		LSTATUS status = RegGetValueW(KEY, SUB_KEY, SYS_VAL, RRF_RT_REG_DWORD, NULL, &data, &size);
 
 		if (status != ERROR_SUCCESS) {
-			printf("Error reading current theme\n");
+			print(L"Error reading current theme: ");
 			print_error(status);
 			return 1;
 		}
 
-		new_theme = (data + 1) % 2;
+		if (data == THEME_DARK) {
+			new_theme = THEME_LIGHT;
+		}
 	}
 
-	printf("Switching to %s theme!\n", new_theme == 0 ? "dark" : "light");
+	print(L"Switching to ");
+	print(new_theme == THEME_DARK ? L"dark" : L"light");
+	print(L" theme...\n");
 
-	{
-		LSTATUS status = RegSetKeyValue(
-			KEY,           // [in]           HKEY    hKey,
-			TEXT(SUB_KEY), // [in, optional] LPCSTR  lpSubKey,
-			TEXT(SYS_VAL), // [in, optional] LPCSTR  lpValueName,
-			REG_DWORD,     // [in]           DWORD   dwType,
-			&new_theme,    // [in, optional] LPCVOID lpData,
-			sizeof(DWORD)  // [in]           DWORD   cbData
-		);
-		if (status != ERROR_SUCCESS) {
-			printf("Error setting system theme\n");
-			print_error(status);
-		}
+	LSTATUS status = RegSetKeyValueW(KEY, SUB_KEY, SYS_VAL, REG_DWORD, &new_theme, sizeof(DWORD));
+	if (status != ERROR_SUCCESS) {
+		print(L"Error setting system theme: ");
+		print_error(status);
+	}
 
-		status = RegSetKeyValue(
-			KEY,           // [in]           HKEY    hKey,
-			TEXT(SUB_KEY), // [in, optional] LPCSTR  lpSubKey,
-			TEXT(APP_VAL), // [in, optional] LPCSTR  lpValueName,
-			REG_DWORD,     // [in]           DWORD   dwType,
-			&new_theme,    // [in, optional] LPCVOID lpData,
-			sizeof(DWORD)  // [in]           DWORD   cbData
-		);
-		if (status != ERROR_SUCCESS) {
-			printf("Error setting app theme\n");
-			print_error(status);
-		}
+	status = RegSetKeyValueW(KEY, SUB_KEY, APP_VAL, REG_DWORD, &new_theme, sizeof(DWORD));
+	if (status != ERROR_SUCCESS) {
+		print(L"Error setting app theme: ");
+		print_error(status);
 	}
 
 	return 0;
