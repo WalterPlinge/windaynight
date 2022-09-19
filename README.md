@@ -1,14 +1,12 @@
 # WinDayNight
 ### Windows theme toggler
 
-Just run the exe to toggle the windows dark/light theme.
+A little tray app that toggles Windows' theme.
+It can be set to run at startup.
 It sets both the System and App theme.
 
-If you use it from the command line or a script, you can also choose the theme with the arguments `-dark` and `-light`.
-This is useful when using Windows' Task Scheduler so it doesn't get out of sync.
+When using it from the command line, a script, or Windows task scheduler, you can pass `toggle`, `light` or `dark` as an argument to control its behaviour (no argument will launch the tray app).
 
 How to build:
-- `C`
-  - `build.cmd`
-- `Odin`
-  - `odin build .`
+- Make sure you have MSVC (other toolchains not tested) and Windows SDK
+- run `build.cmd`
