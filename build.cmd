@@ -16,7 +16,7 @@ if "%1" equ "debug" (
 	set CL=!CL! /MTd /Od /Zi /RTC1 /fsanitize=address /D_DEBUG
 	set LINK=!LINK! libucrtd.lib
 ) else (
-	set CL=!CL! /O1 /GL /GS- /DNDEBUG
+	set CL=!CL! /O2 /GL /GS- /DNDEBUG
 	set LINK=!LINK! /fixed /opt:icf /opt:ref libucrt.lib libvcruntime.lib
 )
 
