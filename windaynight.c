@@ -40,7 +40,7 @@ static HANDLE app_icon;
 #endif
 
 void print_error(LSTATUS status) {
-	LPWSTR buf;
+	LPWSTR buf = 0;
 	DWORD flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER;
 	FormatMessageW(flags, NULL, status, 0, (LPWSTR)&buf, 0, NULL);
 	MessageBoxW(NULL, buf, 0, MB_ICONERROR);
@@ -88,7 +88,7 @@ Theme parse_args(void) {
 
 
 void set_theme(Theme theme) {
-	LSTATUS status;
+	LSTATUS status = 0;
 	status = RegSetKeyValueW(HKEY_CURRENT_USER, SUB_KEY, SYS_VAL, REG_DWORD, &theme, sizeof(DWORD));
 	if (status != ERROR_SUCCESS) {
 		print_error(status);
@@ -188,8 +188,8 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam) {
 			if (startup_key_status != ERROR_SUCCESS) {
 				print_error(startup_key_status);
 			} else {
+				WCHAR name[0xFF] = {0};
 				for (int i = 0; true; i += 1) {
-					WCHAR name[0xFF] = {0};
 					DWORD size = sizeof(name) / sizeof(WCHAR);
 					LSTATUS status = RegEnumValueW(
 						startup_key, i, name, &size,
@@ -199,7 +199,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam) {
 						break;
 					}
 					if (status == ERROR_MORE_DATA) {
-						// we don't care about long names, it's certainly not our value
+						// we don't care about long names, it's not our value
 						continue;
 					}
 					if (status == ERROR_SUCCESS && STRING_EQUAL(name, WDN_TITLE)) {
@@ -224,7 +224,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam) {
 			// now we've created the menu, our popup window can be shown
 			SetForegroundWindow(window);
 
-			POINT mouse;
+			POINT mouse = {0};
 			GetCursorPos(&mouse);
 			UINT cmd_flags = TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTBUTTON;
 			BOOL cmd = TrackPopupMenuEx(menu, cmd_flags, mouse.x, mouse.y, window, NULL);
@@ -329,7 +329,7 @@ void WinMainCRTStartup(void) {
 	}
 
 	while (true) {
-		MSG message;
+		MSG message = {0};
 		BOOL result = GetMessageW(&message, NULL, 0, 0);
 		if (result == 0) {
 			ExitProcess(0);
