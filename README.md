@@ -2,8 +2,9 @@
 ### Windows theme toggler
 
 A little tray app that toggles Windows' theme.
-It can be set to run at startup.
-It sets both the System and App theme.
+Just click the icon to toggle the theme!<br>
+It sets both the System and App theme.<br>
+It can be set to show in the tray at startup.<br>
 
 ![What it looks like in the Tray](./image.webp)
 
