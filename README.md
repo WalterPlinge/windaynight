@@ -1,5 +1,6 @@
 # WinDayNight
 ### Windows theme toggler
+### [<ins>> Download <</ins>](https://github.com/WalterPlinge/windaynight/releases/download/v1.1.0/windaynight.exe)
 
 A little tray app that toggles Windows' theme.
 Just click the icon to toggle the theme!<br>
